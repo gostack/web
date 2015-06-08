@@ -69,5 +69,9 @@ func ContextWithInfo(ctx context.Context, info Info) context.Context {
 
 // InfoFromContext retrieves an Info stored within a context.
 func InfoFromContext(ctx context.Context) Info {
-	return ctx.Value(ctxKey).(Info)
+	if info, ok := ctx.Value(ctxKey).(Info); ok {
+		return info
+	}
+
+	return Info{}
 }
