@@ -1,42 +1,28 @@
+/*
+Copyright 2015 Rodrigo Rafael Monti Kochenburger
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package web
 
 import (
 	"net/http"
-	"os"
 
-	"github.com/satori/go.uuid"
+	"github.com/gostack/ctxinfo"
+
 	"golang.org/x/net/context"
 )
-
-// ctxKey is a string identifier to be used when storing Info into a context,
-// keeping all package data under the same key avoids collision from other packages.
-const ctxKey = "github.com/gostack/web"
-
-// caches the hostname for this system
-var hostname string
-
-// init the package
-func init() {
-	var err error
-
-	hostname, err = os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-}
-
-// Info is a struct that stores information about the system and the request currently
-// being processed.
-type Info struct {
-	Service       string
-	Hostname      string
-	TransactionID uuid.UUID
-}
-
-// NewInfo returns a new initialized Info instance.
-func NewInfo(service string) Info {
-	return Info{Service: service, Hostname: hostname, TransactionID: uuid.NewV4()}
-}
 
 // ContextHandler is a extension of a http.Handler that also includes a context.Context object.
 type ContextHandler interface {
@@ -53,25 +39,11 @@ func (ch ContextHandlerFunc) ServeHTTP(c context.Context, w http.ResponseWriter,
 
 // ContextHandlerAdapter wraps a ContextHandler, returning an http.Handler that initializes a
 // context allowing ContexHandler to be mounted on any net/http compatible library.
-func ContextHandlerAdapter(service string, ch ContextHandler) http.Handler {
+func ContextHandlerAdapter(applicationName string, ch ContextHandler) http.Handler {
 	fn := func(w http.ResponseWriter, req *http.Request) {
-		ctx := ContextWithInfo(context.Background(), NewInfo(service))
+		ctx := ctxinfo.NewContext(context.Background(), applicationName, "webapp")
 		ch.ServeHTTP(ctx, w, req)
 	}
 
 	return http.HandlerFunc(fn)
-}
-
-// ContextWithInfo creates a new context containing which contains a instance of Info
-func ContextWithInfo(ctx context.Context, info Info) context.Context {
-	return context.WithValue(ctx, ctxKey, info)
-}
-
-// InfoFromContext retrieves an Info stored within a context.
-func InfoFromContext(ctx context.Context) Info {
-	if info, ok := ctx.Value(ctxKey).(Info); ok {
-		return info
-	}
-
-	return Info{}
 }
