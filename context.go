@@ -45,7 +45,7 @@ func ContextHandlerAdapter(ctx context.Context, ch ContextHandler) http.Handler 
 	fn := func(w http.ResponseWriter, req *http.Request) {
 		ctx = ctxinfo.TxContext(ctx)
 
-		m := mss.NewMeasurement(ctx, "request", mss.Data{"url": req.RequestURI, "content-type": req.Header.Get("Content-Type")})
+		m := mss.NewMeasurement(ctx, "http", mss.Data{"url": req.RequestURI, "content-type": req.Header.Get("Content-Type")})
 		defer mss.Record(m)
 
 		srw := statusResponseWriter{ResponseWriter: w}
@@ -62,7 +62,7 @@ func GojiContextHandlerAdapter(ctx context.Context, ch ContextHandler) web.Handl
 	fn := func(c web.C, w http.ResponseWriter, req *http.Request) {
 		ctx := ctxinfo.TxContext(ctx)
 
-		m := mss.NewMeasurement(ctx, "request", mss.Data{"url": req.RequestURI, "content-type": req.Header.Get("Content-Type")})
+		m := mss.NewMeasurement(ctx, "http", mss.Data{"url": req.RequestURI, "content-type": req.Header.Get("Content-Type")})
 		defer mss.Record(m)
 
 		srw := statusResponseWriter{ResponseWriter: w}
