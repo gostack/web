@@ -19,6 +19,8 @@ package web
 import (
 	"net/http"
 
+	"github.com/gostack/mss"
+
 	"github.com/gostack/ctxinfo"
 	"github.com/zenazn/goji/web"
 	"golang.org/x/net/context"
@@ -41,7 +43,14 @@ func (ch ContextHandlerFunc) ServeHTTP(c context.Context, w http.ResponseWriter,
 // context allowing ContexHandler to be mounted on any net/http compatible library.
 func ContextHandlerAdapter(ctx context.Context, ch ContextHandler) http.Handler {
 	fn := func(w http.ResponseWriter, req *http.Request) {
-		ch.ServeHTTP(ctxinfo.TxContext(ctx), w, req)
+		ctx = ctxinfo.TxContext(ctx)
+
+		m := mss.NewMeasurement(ctx, "request", mss.Data{"url": req.RequestURI, "content-type": req.Header.Get("Content-Type")})
+		defer mss.Record(m)
+
+		srw := statusResponseWriter{ResponseWriter: w}
+		ch.ServeHTTP(ctx, &srw, req)
+		m.Data["status"] = srw.Status
 	}
 
 	return http.HandlerFunc(fn)
@@ -52,8 +61,13 @@ func ContextHandlerAdapter(ctx context.Context, ch ContextHandler) http.Handler 
 func GojiContextHandlerAdapter(ctx context.Context, ch ContextHandler) web.Handler {
 	fn := func(c web.C, w http.ResponseWriter, req *http.Request) {
 		ctx := ctxinfo.TxContext(ctx)
-		ctx = context.WithValue(ctx, "github.com/gostack/web:goji", c.URLParams)
-		ch.ServeHTTP(ctx, w, req)
+
+		m := mss.NewMeasurement(ctx, "request", mss.Data{"url": req.RequestURI, "content-type": req.Header.Get("Content-Type")})
+		defer mss.Record(m)
+
+		srw := statusResponseWriter{ResponseWriter: w}
+		ch.ServeHTTP(context.WithValue(ctx, "github.com/gostack/web:goji", c.URLParams), &srw, req)
+		m.Data["status"] = srw.Status
 	}
 
 	return web.HandlerFunc(fn)
@@ -62,4 +76,14 @@ func GojiContextHandlerAdapter(ctx context.Context, ch ContextHandler) web.Handl
 func GojiParam(ctx context.Context, key string) string {
 	m := ctx.Value("github.com/gostack/web:goji").(map[string]string)
 	return m[key]
+}
+
+type statusResponseWriter struct {
+	http.ResponseWriter
+	Status int
+}
+
+func (w *statusResponseWriter) WriteHeader(status int) {
+	w.ResponseWriter.WriteHeader(status)
+	w.Status = status
 }
