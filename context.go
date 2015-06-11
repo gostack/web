@@ -20,7 +20,7 @@ import (
 	"net/http"
 
 	"github.com/gostack/ctxinfo"
-
+	"github.com/zenazn/goji/web"
 	"golang.org/x/net/context"
 )
 
@@ -45,4 +45,21 @@ func ContextHandlerAdapter(ctx context.Context, ch ContextHandler) http.Handler 
 	}
 
 	return http.HandlerFunc(fn)
+}
+
+// ContextHandlerAdapter wraps a ContextHandler, returning an http.Handler that initializes a
+// context allowing ContexHandler to be mounted on any net/http compatible library.
+func GojiContextHandlerAdapter(ctx context.Context, ch ContextHandler) web.Handler {
+	fn := func(c web.C, w http.ResponseWriter, req *http.Request) {
+		ctx := ctxinfo.TxContext(ctx)
+		ctx = context.WithValue(ctx, "github.com/gostack/web:goji", c.URLParams)
+		ch.ServeHTTP(ctx, w, req)
+	}
+
+	return web.HandlerFunc(fn)
+}
+
+func GojiParam(ctx context.Context, key string) string {
+	m := ctx.Value("github.com/gostack/web:goji").(map[string]string)
+	return m[key]
 }
