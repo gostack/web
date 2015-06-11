@@ -39,10 +39,9 @@ func (ch ContextHandlerFunc) ServeHTTP(c context.Context, w http.ResponseWriter,
 
 // ContextHandlerAdapter wraps a ContextHandler, returning an http.Handler that initializes a
 // context allowing ContexHandler to be mounted on any net/http compatible library.
-func ContextHandlerAdapter(applicationName string, ch ContextHandler) http.Handler {
+func ContextHandlerAdapter(ctx context.Context, ch ContextHandler) http.Handler {
 	fn := func(w http.ResponseWriter, req *http.Request) {
-		ctx := ctxinfo.NewContext(context.Background(), applicationName, "webapp")
-		ch.ServeHTTP(ctx, w, req)
+		ch.ServeHTTP(ctxinfo.TxContext(ctx), w, req)
 	}
 
 	return http.HandlerFunc(fn)

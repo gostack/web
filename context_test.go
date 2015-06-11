@@ -17,54 +17,33 @@ limitations under the License.
 package web
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gostack/ctxinfo"
-
 	"golang.org/x/net/context"
 )
 
 func TestContextLifecycle(t *testing.T) {
 	ctxHandler := func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
-		j, err := json.Marshal(ctxinfo.FromContext(ctx))
-		if err != nil {
-			panic(err)
+		env, tx := ctxinfo.EnvFromContext(ctx), ctxinfo.TxFromContext(ctx)
+
+		if env.Application != "myapp" || tx.TransactionID.String() == "" {
+			t.Error("context not initialized properly")
 		}
-		w.Write(j)
 	}
 
-	handler := ContextHandlerAdapter("doximity.test", ContextHandlerFunc(ctxHandler))
+	handler := ContextHandlerAdapter(
+		ctxinfo.EnvContext(context.Background(), "myapp"),
+		ContextHandlerFunc(ctxHandler),
+	)
 
 	req, err := http.NewRequest("GET", "http://doximity.test", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-
-	v := ctxinfo.Info{}
-	if err := json.Unmarshal(w.Body.Bytes(), &v); err != nil {
-		t.Fatal(err)
-	}
-
-	if v.Hostname == "" {
-		t.Error("hostname is empty")
-	}
-
-	if v.TransactionID.String() == "" {
-		t.Error("transaction id is empty")
-	}
-
-	if v.Application != "doximity.test" {
-		t.Error("application is not doximity.test")
-	}
-
-	if v.Service != "webapp" {
-		t.Error("service is not webapp")
-	}
+	handler.ServeHTTP(httptest.NewRecorder(), req)
 }
